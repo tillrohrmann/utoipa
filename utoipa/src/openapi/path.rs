@@ -11,7 +11,7 @@ use super::{
     request_body::RequestBody,
     response::{Response, Responses},
     security::SecurityRequirement,
-    set_value, Deprecated, ExternalDocs, RefOr, Required, Schema, Server,
+    set_value, Deprecated, ExternalDocs, Ref, RefOr, Required, ResponseBuilder, Schema, Server,
 };
 
 #[cfg(not(feature = "preserve_path_order"))]
@@ -486,7 +486,7 @@ builder! {
 
         /// List of applicable parameters for this [`Operation`].
         #[serde(skip_serializing_if = "Option::is_none")]
-        pub parameters: Option<Vec<Parameter>>,
+        pub parameters: Option<Vec<RefOr<Parameter>>>,
 
         /// Optional request body for this [`Operation`].
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -564,7 +564,7 @@ impl OperationBuilder {
     }
 
     /// Add or change parameters of the [`Operation`].
-    pub fn parameters<I: IntoIterator<Item = P>, P: Into<Parameter>>(
+    pub fn parameters<I: IntoIterator<Item = P>, P: Into<RefOr<Parameter>>>(
         mut self,
         parameters: Option<I>,
     ) -> Self {
@@ -584,7 +584,7 @@ impl OperationBuilder {
     }
 
     /// Append parameter to [`Operation`] parameters.
-    pub fn parameter<P: Into<Parameter>>(mut self, parameter: P) -> Self {
+    pub fn parameter<P: Into<RefOr<Parameter>>>(mut self, parameter: P) -> Self {
         match self.parameters {
             Some(ref mut parameters) => parameters.push(parameter.into()),
             None => {
@@ -867,6 +867,18 @@ pub enum ParameterStyle {
     /// Simple way of rendering nested objects using form parameters .e.g. _`color[B]=150`_.
     /// Allowed with [`ParameterIn::Query`].
     DeepObject,
+}
+
+impl From<ParameterBuilder> for RefOr<Parameter> {
+    fn from(builder: ParameterBuilder) -> Self {
+        Self::T(builder.build())
+    }
+}
+
+impl From<Ref> for RefOr<Parameter> {
+    fn from(value: Ref) -> Self {
+        RefOr::Ref(value)
+    }
 }
 
 #[cfg(test)]

@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::extensions::Extensions;
+use super::path::Parameter;
 use super::RefOr;
 use super::{builder, security::SecurityScheme, set_value, xml::Xml, Deprecated, Response};
 use crate::{ToResponse, ToSchema};
@@ -72,6 +73,12 @@ builder! {
         /// [reference]: https://spec.openapis.org/oas/latest.html#reference-object
         #[serde(skip_serializing_if = "BTreeMap::is_empty", default)]
         pub responses: BTreeMap<String, RefOr<Response>>,
+
+        /// Map of reusable [OpenAPI Parameter Object][parameter]s.
+        ///
+        /// [parameter]: https://spec.openapis.org/oas/latest.html#parameter-object
+        #[serde(skip_serializing_if = "BTreeMap::is_empty", default)]
+        pub parameters: BTreeMap<String, RefOr<Parameter>>,
 
         /// Map of reusable [OpenAPI Security Scheme Object][security_scheme]s.
         ///
@@ -237,6 +244,40 @@ impl ComponentsBuilder {
             responses
                 .into_iter()
                 .map(|(name, response)| (name.into(), response.into())),
+        );
+
+        self
+    }
+
+    /// Add [`Parameter`] to [`Components`].
+    ///
+    /// Method accepts two arguments; `name` of the reusable parameter and `parameter` which is the
+    /// reusable parameter itself.
+    pub fn parameter<S: Into<String>, P: Into<RefOr<Parameter>>>(
+        mut self,
+        name: S,
+        parameter: P,
+    ) -> Self {
+        self.parameters.insert(name.into(), parameter.into());
+        self
+    }
+
+    /// Add multiple [`Parameter`]s to [`Components`] from iterator.
+    ///
+    /// Like the [`ComponentsBuilder::schemas_from_iter`] this allows adding multiple parameters by
+    /// any iterator what returns tuples of (name, parameter) values.
+    pub fn parameters_from_iter<
+        I: IntoIterator<Item = (S, P)>,
+        S: Into<String>,
+        P: Into<RefOr<Parameter>>,
+    >(
+        mut self,
+        parameters: I,
+    ) -> Self {
+        self.parameters.extend(
+            parameters
+                .into_iter()
+                .map(|(name, parameter)| (name.into(), parameter.into())),
         );
 
         self
@@ -1420,6 +1461,12 @@ impl Ref {
     /// references the reusable response.
     pub fn from_response_name<I: Into<String>>(response_name: I) -> Self {
         Self::new(format!("#/components/responses/{}", response_name.into()))
+    }
+
+    /// Construct a new [`Ref`] from provided parameter name. This will create a [`Ref`] that
+    /// references the reusable parameter.
+    pub fn from_parameter_name<I: Into<String>>(parameter_name: I) -> Self {
+        Self::new(format!("#/components/parameters/{}", parameter_name.into()))
     }
 
     to_array_builder!();
